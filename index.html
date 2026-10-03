@@ -68,9 +68,30 @@
   .sub{
     color:var(--muted);
     font-size:13px;
-    margin-bottom:18px;
+    margin-bottom:12px;
     text-align:center;
   }
+  .progress{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:14px;
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .dots{display:flex; gap:6px;}
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--slate);
+    transition:background .3s ease, transform .3s ease;
+  }
+  .dot.current{background:var(--ink); transform:scale(1.25);}
+  .dot.won{background:var(--mint);}
+  .dot.lost{background:#e5574f;}
   .clue-box{
     background:var(--panel);
     border:1px solid var(--border);
@@ -174,7 +195,7 @@
   .key.correct{background:var(--mint); color:var(--navy);}
   .key.present{background:var(--amber); color:var(--navy);}
   .key.absent{background:#1d2c3d; color:var(--muted);}
-  #playAgain{
+  #nextBtn{
     margin-top:20px;
     background:var(--mint);
     color:var(--navy);
@@ -188,7 +209,7 @@
     display:none;
     touch-action:manipulation;
   }
-  #playAgain:active{transform:scale(0.97);}
+  #nextBtn:active{transform:scale(0.97);}
   footer{
     margin-top:26px;
     font-size:10.5px;
@@ -206,6 +227,11 @@
   <h1>CYBER WORDLE</h1>
   <div class="sub">Guess the 5-letter cyber term in 6 tries.</div>
 
+  <div class="progress">
+    <span id="roundLabel">Word 1 of 5</span>
+    <div class="dots" id="dots"></div>
+  </div>
+
   <div class="clue-box">
     <div class="clue-label">Hint</div>
     <div class="clue-text" id="clueText">Loading...</div>
@@ -214,12 +240,13 @@
   <div id="board"></div>
   <div id="message"></div>
   <div id="keyboard"></div>
-  <button id="playAgain">Play Again</button>
+  <button id="nextBtn">Next Word &rarr;</button>
 
   <footer>Green: right spot &nbsp;&bull;&nbsp; Yellow: right letter, wrong spot &nbsp;&bull;&nbsp; Grey: not in word</footer>
 </div>
 
 <script>
+  // Words are played in this exact order, one after the other.
   const WORDS = [
     { word: "SPOOF", clue: "Faking an identity, such as an email sender or a website, to look trustworthy." },
     { word: "CACHE", clue: "Stored copies of data that can leak info if not cleared." },
@@ -230,6 +257,9 @@
 
   const ROWS = 6, COLS = 5;
   let target, clue, currentRow, currentCol, board, gameOver, locked;
+  let roundIndex = 0;
+  let results = [];   // "won" | "lost" for each finished word
+
   const keyRows = [
     "QWERTYUIOP".split(""),
     "ASDFGHJKL".split(""),
@@ -241,12 +271,26 @@
   const messageEl = document.getElementById("message");
   const clueEl = document.getElementById("clueText");
   const keyboardEl = document.getElementById("keyboard");
-  const playAgainBtn = document.getElementById("playAgain");
+  const nextBtn = document.getElementById("nextBtn");
+  const roundLabelEl = document.getElementById("roundLabel");
+  const dotsEl = document.getElementById("dots");
 
-  function pickWord(){
-    const choice = WORDS[Math.floor(Math.random() * WORDS.length)];
+  function loadWord(){
+    const choice = WORDS[roundIndex];
     target = choice.word;
     clue = choice.clue;
+  }
+
+  function renderProgress(){
+    roundLabelEl.textContent = "Word " + (roundIndex + 1) + " of " + WORDS.length;
+    dotsEl.innerHTML = "";
+    WORDS.forEach((_, i) => {
+      const d = document.createElement("div");
+      d.className = "dot";
+      if (results[i]) d.classList.add(results[i]);
+      else if (i === roundIndex) d.classList.add("current");
+      dotsEl.appendChild(d);
+    });
   }
 
   function buildBoard(){
@@ -287,15 +331,16 @@
     });
   }
 
-  function newGame(){
-    pickWord();
+  function startRound(){
+    loadWord();
     currentRow = 0;
     currentCol = 0;
     gameOver = false;
     locked = false;
     messageEl.textContent = "";
     clueEl.textContent = clue;
-    playAgainBtn.style.display = "none";
+    nextBtn.style.display = "none";
+    renderProgress();
     buildBoard();
     buildKeyboard();
   }
@@ -352,10 +397,10 @@
     setTimeout(() => {
       if (guess === target){
         showMessage("Solved! " + (currentRow + 1) + "/6");
-        endGame();
+        endRound("won");
       } else if (currentRow === ROWS - 1){
         showMessage("Out of tries. The word was " + target);
-        endGame();
+        endRound("lost");
       } else {
         showMessage("");
         currentRow++;
@@ -407,22 +452,46 @@
     });
   }
 
-  function endGame(){
+  function endRound(outcome){
     gameOver = true;
     locked = false;
-    playAgainBtn.style.display = "inline-block";
+    results[roundIndex] = outcome;
+    renderProgress();
+
+    const isLast = roundIndex === WORDS.length - 1;
+    if (isLast){
+      const solved = results.filter(r => r === "won").length;
+      showMessage("All done! You solved " + solved + " of " + WORDS.length + " words.");
+      nextBtn.innerHTML = "Play Again from Word 1";
+    } else {
+      nextBtn.innerHTML = "Next Word &rarr;";
+    }
+    nextBtn.style.display = "inline-block";
   }
 
-  playAgainBtn.addEventListener("click", (e) => { e.preventDefault(); newGame(); });
+  nextBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (roundIndex === WORDS.length - 1){
+      roundIndex = 0;
+      results = [];
+    } else {
+      roundIndex++;
+    }
+    startRound();
+  });
 
   document.addEventListener("keydown", (e) => {
     const k = e.key.toUpperCase();
-    if (k === "ENTER") handleKey("ENTER");
+    if (k === "ENTER"){
+      // When the round is over, Enter advances to the next word.
+      if (gameOver && nextBtn.style.display !== "none"){ nextBtn.click(); return; }
+      handleKey("ENTER");
+    }
     else if (k === "BACKSPACE") handleKey("BACK");
     else if (/^[A-Z]$/.test(k) && k.length === 1) handleKey(k);
   });
 
-  newGame();
+  startRound();
 </script>
 </body>
 </html>
