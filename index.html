@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Cyber Wordle | ISACA</title>
+<style>
+  :root{
+    --navy:#0b1f33;
+    --navy-light:#13273e;
+    --panel:#15283f;
+    --mint:#06d6a0;
+    --amber:#ffc93c;
+    --slate:#3b4a5a;
+    --ink:#e8eef4;
+    --muted:#8ea0b3;
+    --border:#25384f;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html, body{
+    height:100%;
+    overscroll-behavior:none;
+  }
+  body{
+    margin:0;
+    min-height:100dvh;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(6,214,160,0.08), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(6,214,160,0.06), transparent 40%),
+      var(--navy);
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    overflow-x:hidden;
+    touch-action:manipulation;
+    user-select:none;
+    -webkit-user-select:none;
+    padding-top:calc(env(safe-area-inset-top,0px) + 24px);
+    padding-bottom:calc(env(safe-area-inset-bottom,0px) + 24px);
+    padding-left:16px;
+    padding-right:16px;
+  }
+  .wrap{
+    width:100%;
+    max-width:460px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .eyebrow{
+    letter-spacing:3px;
+    font-size:11px;
+    font-weight:700;
+    color:var(--mint);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    margin:0 0 4px;
+    font-size:clamp(26px,7vw,40px);
+    font-weight:800;
+    letter-spacing:1px;
+    text-align:center;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:18px;
+    text-align:center;
+  }
+  .clue-box{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 16px;
+    width:100%;
+    text-align:center;
+    margin-bottom:18px;
+  }
+  .clue-label{
+    font-size:10px;
+    letter-spacing:2px;
+    color:var(--mint);
+    font-weight:700;
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .clue-text{
+    font-size:clamp(12px,3.4vw,14px);
+    color:var(--ink);
+    line-height:1.4;
+  }
+  #board{
+    display:grid;
+    grid-template-rows:repeat(6,1fr);
+    gap:clamp(5px,1.6vw,8px);
+    margin-bottom:18px;
+    width:100%;
+    max-width:320px;
+  }
+  .row{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:clamp(5px,1.6vw,8px);
+  }
+  .tile{
+    aspect-ratio:1/1;
+    width:100%;
+    border:2px solid var(--border);
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:"Courier New", monospace;
+    font-weight:700;
+    font-size:clamp(16px,6vw,24px);
+    background:var(--navy-light);
+    color:var(--ink);
+    transition:transform .15s ease, background .3s ease, border-color .3s ease;
+  }
+  .tile.filled{border-color:#4a6075;}
+  .tile.pop{transform:scale(1.08);}
+  .tile.correct{background:var(--mint); border-color:var(--mint); color:var(--navy);}
+  .tile.present{background:var(--amber); border-color:var(--amber); color:var(--navy);}
+  .tile.absent{background:var(--slate); border-color:var(--slate); color:var(--ink);}
+  .tile.flip{animation:flip .5s ease;}
+  @keyframes flip{
+    0%{transform:rotateX(0deg);}
+    50%{transform:rotateX(90deg);}
+    100%{transform:rotateX(0deg);}
+  }
+  #message{
+    min-height:20px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--mint);
+    margin-bottom:14px;
+    text-align:center;
+  }
+  #keyboard{
+    display:flex;
+    flex-direction:column;
+    gap:clamp(5px,1.6vw,8px);
+    width:100%;
+  }
+  .krow{
+    display:flex;
+    justify-content:center;
+    gap:clamp(3px,1.1vw,6px);
+    width:100%;
+  }
+  .key{
+    flex:1 1 0;
+    min-width:0;
+    height:clamp(40px,11vw,48px);
+    border:none;
+    border-radius:6px;
+    background:var(--slate);
+    color:var(--ink);
+    font-size:clamp(11px,3.4vw,14px);
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    touch-action:manipulation;
+    transition:background .3s ease, transform .1s ease;
+  }
+  .key:active{transform:scale(0.94);}
+  .key.wide{flex:1.6 1 0;}
+  .key.correct{background:var(--mint); color:var(--navy);}
+  .key.present{background:var(--amber); color:var(--navy);}
+  .key.absent{background:#1d2c3d; color:var(--muted);}
+  #playAgain{
+    margin-top:20px;
+    background:var(--mint);
+    color:var(--navy);
+    border:none;
+    padding:12px 26px;
+    border-radius:24px;
+    font-weight:800;
+    font-size:14px;
+    letter-spacing:.5px;
+    cursor:pointer;
+    display:none;
+    touch-action:manipulation;
+  }
+  #playAgain:active{transform:scale(0.97);}
+  footer{
+    margin-top:26px;
+    font-size:10.5px;
+    color:var(--muted);
+    text-align:center;
+    line-height:1.5;
+    padding:0 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">ISACA &middot; Cyber Month</div>
+  <h1>CYBER WORDLE</h1>
+  <div class="sub">Guess the 5-letter cyber term in 6 tries.</div>
+
+  <div class="clue-box">
+    <div class="clue-label">Hint</div>
+    <div class="clue-text" id="clueText">Loading...</div>
+  </div>
+
+  <div id="board"></div>
+  <div id="message"></div>
+  <div id="keyboard"></div>
+  <button id="playAgain">Play Again</button>
+
+  <footer>Green: right spot &nbsp;&bull;&nbsp; Yellow: right letter, wrong spot &nbsp;&bull;&nbsp; Grey: not in word</footer>
+</div>
+
+<script>
+  const WORDS = [
+    { word: "SPOOF", clue: "Faking an identity, such as an email sender or a website, to look trustworthy." },
+    { word: "CACHE", clue: "Stored copies of data that can leak info if not cleared." },
+    { word: "PORTS", clue: "Numbered doorways on a device that network traffic goes through." },
+    { word: "CLOUD", clue: "Remote servers that store data and apps." },
+    { word: "PROBE", clue: "Testing a system to find weak spots, which attackers and defenders both do." }
+  ];
+
+  const ROWS = 6, COLS = 5;
+  let target, clue, currentRow, currentCol, board, gameOver, locked;
+  const keyRows = [
+    "QWERTYUIOP".split(""),
+    "ASDFGHJKL".split(""),
+    ["ENTER", ..."ZXCVBNM".split(""), "BACK"]
+  ];
+  const keyState = {};
+
+  const boardEl = document.getElementById("board");
+  const messageEl = document.getElementById("message");
+  const clueEl = document.getElementById("clueText");
+  const keyboardEl = document.getElementById("keyboard");
+  const playAgainBtn = document.getElementById("playAgain");
+
+  function pickWord(){
+    const choice = WORDS[Math.floor(Math.random() * WORDS.length)];
+    target = choice.word;
+    clue = choice.clue;
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML = "";
+    board = [];
+    for (let r = 0; r < ROWS; r++){
+      const rowEl = document.createElement("div");
+      rowEl.className = "row";
+      const rowTiles = [];
+      for (let c = 0; c < COLS; c++){
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        rowEl.appendChild(tile);
+        rowTiles.push(tile);
+      }
+      boardEl.appendChild(rowEl);
+      board.push(rowTiles);
+    }
+  }
+
+  function buildKeyboard(){
+    keyboardEl.innerHTML = "";
+    Object.keys(keyState).forEach(k => delete keyState[k]);
+    keyRows.forEach(row => {
+      const krow = document.createElement("div");
+      krow.className = "krow";
+      row.forEach(k => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "key" + (k === "ENTER" || k === "BACK" ? " wide" : "");
+        btn.textContent = k === "BACK" ? "⌫" : k;
+        btn.dataset.key = k;
+        btn.addEventListener("click", (e) => { e.preventDefault(); handleKey(k); });
+        krow.appendChild(btn);
+        keyState[k] = btn;
+      });
+      keyboardEl.appendChild(krow);
+    });
+  }
+
+  function newGame(){
+    pickWord();
+    currentRow = 0;
+    currentCol = 0;
+    gameOver = false;
+    locked = false;
+    messageEl.textContent = "";
+    clueEl.textContent = clue;
+    playAgainBtn.style.display = "none";
+    buildBoard();
+    buildKeyboard();
+  }
+
+  function showMessage(text){
+    messageEl.textContent = text;
+  }
+
+  function handleKey(k){
+    if (gameOver || locked) return;
+    if (k === "BACK"){
+      if (currentCol > 0){
+        currentCol--;
+        const tile = board[currentRow][currentCol];
+        tile.textContent = "";
+        tile.classList.remove("filled");
+      }
+      return;
+    }
+    if (k === "ENTER"){
+      submitGuess();
+      return;
+    }
+    if (/^[A-Z]$/.test(k) && currentCol < COLS){
+      const tile = board[currentRow][currentCol];
+      tile.textContent = k;
+      tile.classList.add("filled", "pop");
+      setTimeout(() => tile.classList.remove("pop"), 150);
+      currentCol++;
+    }
+  }
+
+  function submitGuess(){
+    if (currentCol < COLS){
+      showMessage("Not enough letters");
+      shakeRow();
+      return;
+    }
+    locked = true;
+    const guess = board[currentRow].map(t => t.textContent).join("");
+    const result = scoreGuess(guess, target);
+
+    board[currentRow].forEach((tile, i) => {
+      setTimeout(() => {
+        tile.classList.add("flip");
+        setTimeout(() => {
+          tile.classList.add(result[i]);
+          updateKey(guess[i], result[i]);
+        }, 250);
+      }, i * 150);
+    });
+
+    const delay = COLS * 150 + 400;
+    setTimeout(() => {
+      if (guess === target){
+        showMessage("Solved! " + (currentRow + 1) + "/6");
+        endGame();
+      } else if (currentRow === ROWS - 1){
+        showMessage("Out of tries. The word was " + target);
+        endGame();
+      } else {
+        showMessage("");
+        currentRow++;
+        currentCol = 0;
+        locked = false;
+      }
+    }, delay);
+  }
+
+  function scoreGuess(guess, target){
+    const result = new Array(COLS).fill("absent");
+    const targetLetters = target.split("");
+
+    for (let i = 0; i < COLS; i++){
+      if (guess[i] === target[i]){
+        result[i] = "correct";
+        targetLetters[i] = null;
+      }
+    }
+    for (let i = 0; i < COLS; i++){
+      if (result[i] === "correct") continue;
+      const idx = targetLetters.indexOf(guess[i]);
+      if (idx !== -1){
+        result[i] = "present";
+        targetLetters[idx] = null;
+      }
+    }
+    return result;
+  }
+
+  function updateKey(letter, state){
+    const btn = keyState[letter];
+    if (!btn) return;
+    const rank = { absent: 0, present: 1, correct: 2 };
+    const current = btn.dataset.state || "absent";
+    if (!btn.dataset.state || rank[state] > rank[current]){
+      btn.classList.remove("correct", "present", "absent");
+      btn.classList.add(state);
+      btn.dataset.state = state;
+    }
+  }
+
+  function shakeRow(){
+    const row = board[currentRow];
+    row.forEach(tile => {
+      tile.style.transform = "translateX(-4px)";
+      setTimeout(() => tile.style.transform = "translateX(4px)", 60);
+      setTimeout(() => tile.style.transform = "", 120);
+    });
+  }
+
+  function endGame(){
+    gameOver = true;
+    locked = false;
+    playAgainBtn.style.display = "inline-block";
+  }
+
+  playAgainBtn.addEventListener("click", (e) => { e.preventDefault(); newGame(); });
+
+  document.addEventListener("keydown", (e) => {
+    const k = e.key.toUpperCase();
+    if (k === "ENTER") handleKey("ENTER");
+    else if (k === "BACKSPACE") handleKey("BACK");
+    else if (/^[A-Z]$/.test(k) && k.length === 1) handleKey(k);
+  });
+
+  newGame();
+</script>
+</body>
+</html>
